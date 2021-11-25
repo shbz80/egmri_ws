@@ -1,0 +1,4 @@
+# Ignore msg files
+
+src/egmri_controller_pkg/__init__.py
+src/egmri_controller_pkg/msg/*

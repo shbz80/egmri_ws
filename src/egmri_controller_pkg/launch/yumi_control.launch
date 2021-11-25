@@ -1,0 +1,23 @@
+<launch>
+	<rosparam file="$(find yumi_control)/config/effort_controllers.yaml" command="load" ns="/yumi"/>
+	<arg name="arm_controllers" default="joint_state_controller
+									 joint_effort_controller_1_r
+									 joint_effort_controller_2_r
+									 joint_effort_controller_7_r
+									 joint_effort_controller_3_r
+									 joint_effort_controller_4_r
+									 joint_effort_controller_5_r
+									 joint_effort_controller_6_r
+									 joint_effort_controller_1_l
+									 joint_effort_controller_2_l
+									 joint_effort_controller_7_l
+									 joint_effort_controller_3_l
+									 joint_effort_controller_4_l
+									 joint_effort_controller_5_l
+									 joint_effort_controller_6_l"/>
+	<node name="unspawn_arms"
+					pkg="controller_manager" type="unspawner"
+					args="$(arg arm_controllers)" ns="/yumi"/>
+	<include file="$(find egmri_controller_pkg)/launch/yumi_only_controller.launch" ns="/yumi"/>
+
+</launch>

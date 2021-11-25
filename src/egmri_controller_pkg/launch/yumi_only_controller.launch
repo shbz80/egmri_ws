@@ -1,0 +1,34 @@
+<launch>
+    <param name="EGMRIYumiPlugin/type" value="egmri_controller_pkg/EGMRIYumiPlugin" />
+    <!-- rosparam command="load" file="$(find egmri_controller_pkg)/launch/pr2_head_controller.yaml" -->
+    <rosparam command="load" file="$(find egmri_controller_pkg)/launch/yumi_controller.yaml" />
+
+    <!-- controller params -->
+    <param name="EGMRIYumiPlugin/root_name" value="yumi_base_link" />
+    <!-- TODO original value was tool_frame-->
+    <param name="EGMRIYumiPlugin/left_tip_name" value="gripper_l_base" />
+    <param name="EGMRIYumiPlugin/right_tip_name" value="gripper_r_base" />
+
+
+    <!--  ##############################################################-->
+    <!-- TODO: urdf is loaded into local parameter space for controller access-->
+    <!-- a proper way has to found to do this-->
+    <!--  Hardware interfaces for the joints and grippers -->
+      <arg name="arms_hardware_interface" default="EffortJointInterface"/>
+      <arg name="grippers_hardware_interface" default="EffortJointInterface"/>
+
+    <arg name="yumi_setup" default="default"/>
+    <param name="EGMRIYumiPlugin/robot_description" command="$(find xacro)/xacro.py '$(find yumi_description)/urdf/yumi.urdf.xacro' arms_interface:=$(arg arms_hardware_interface) grippers_interface:=$(arg grippers_hardware_interface) yumi_setup:=$(arg yumi_setup)" />
+    <!--  ##############################################################-->
+
+    <!-- kalman filter matrices -->
+    <!-- TODO this may be required-->
+    <param name="EGMRIYumiPlugin/encoder_filter_params" textfile="$(find egmri_controller_pkg)/encoder_filter_params.txt"/>
+
+    <!-- Spawn Controller -->
+    <node name="controller_spawner"
+         pkg="controller_manager" type="controller_manager" output="screen"
+         args="spawn EGMRIYumiPlugin" />
+
+
+</launch>

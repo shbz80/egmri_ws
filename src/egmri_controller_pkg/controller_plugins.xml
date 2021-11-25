@@ -1,0 +1,5 @@
+<library path="lib/libegmri_controller_lib">
+  <class name="egmri_controller_pkg/EGMRIYumiPlugin"
+         type="egmri_control::EGMRIYumiPlugin"
+         base_class_type="controller_interface::ControllerBase" />
+</library>

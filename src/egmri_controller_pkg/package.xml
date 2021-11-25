@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>egmri_controller_pkg</name>
+  <version>0.0.0</version>
+
+  <maintainer email="shahbazkhader@gmail.com">Shahbaz Khader</maintainer>
+
+  <description>Adaptation of EGMRI code for EGMRI YuMi control.</description>
+  <author></author>
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <build_export_depend>message_runtime</build_export_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <build_depend>controller_interface</build_depend>
+  <exec_depend>controller_interface</exec_depend>
+  <build_depend>hardware_interface</build_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>roslib</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>control_toolbox</build_depend>
+  <build_depend>realtime_tools</build_depend>
+  <build_depend>orocos_kdl</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>controller_manager</build_depend>
+
+  <export>
+    <controller_interface plugin="${prefix}/controller_plugins.xml" />
+  </export>
+
+</package>
