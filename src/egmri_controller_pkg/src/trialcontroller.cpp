@@ -66,6 +66,8 @@ void TrialController::configure_controller(OptionsMap &options)
         obs_datatypes_[i] = (egmri::SampleType) datatypes[i];
     }
 
+    arm_ = (egmri::ActuatorType) boost::get<int>(options["arm_datatype"]);
+
 }
 
 // Check if controller is finished with its current task.

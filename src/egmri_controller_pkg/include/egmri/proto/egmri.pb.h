@@ -61,7 +61,8 @@ inline bool SampleType_Parse(
 enum ActuatorType {
   LEFT_ARM = 0,
   RIGHT_ARM = 1,
-  TOTAL_ACTUATOR_TYPES = 2
+  BOTH = 2,
+  TOTAL_ACTUATOR_TYPES = 3
 };
 bool ActuatorType_IsValid(int value);
 const ActuatorType ActuatorType_MIN = LEFT_ARM;
@@ -81,7 +82,8 @@ inline bool ActuatorType_Parse(
 enum PositionControlMode {
   NO_CONTROL = 0,
   JOINT_SPACE = 1,
-  TOTAL_CONTROL_MODES = 2
+  JOINT_SPACE_HOLD = 2,
+  TOTAL_CONTROL_MODES = 3
 };
 bool PositionControlMode_IsValid(int value);
 const PositionControlMode PositionControlMode_MIN = NO_CONTROL;
@@ -100,7 +102,8 @@ inline bool PositionControlMode_Parse(
 }
 enum ControllerType {
   TF_CONTROLLER = 0,
-  TOTAL_CONTROLLER_TYPES = 1
+  IMP_CONTROLLER = 1,
+  TOTAL_CONTROLLER_TYPES = 2
 };
 bool ControllerType_IsValid(int value);
 const ControllerType ControllerType_MIN = TF_CONTROLLER;

@@ -37,6 +37,8 @@ private:
     // end effector target (subtracted before control is computed)
     Eigen::VectorXd ee_tgt_;
 
+    egmri::ActuatorType arm_;
+
 protected:
     bool is_configured_;
 

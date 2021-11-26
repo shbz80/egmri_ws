@@ -343,6 +343,7 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
     }
 
     std::vector<int> state_datatypes, obs_datatypes;
+    int arm_datatype;
     state_datatypes.resize(msg->state_datatypes.size());
     for(int i=0; i<state_datatypes.size(); i++){
         state_datatypes[i] = msg->state_datatypes[i];
@@ -353,6 +354,8 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
         obs_datatypes[i] = msg->obs_datatypes[i];
     }
     controller_params["obs_datatypes"] = obs_datatypes;
+    arm_datatype = msg->arm_datatype;
+    controller_params["arm_datatype"] = arm_datatype;
     if (msg->controller.controller_to_execute == egmri::TF_CONTROLLER) {
         trial_controller_.reset(new TfController());
         controller_params["T"] = (int)msg->T;
@@ -360,6 +363,9 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
         int dU = (int) tfparams.dU;
         controller_params["dU"] = dU;
         trial_controller_-> configure_controller(controller_params);
+    }
+    else if (msg->controller.controller_to_execute == egmri::IMP_CONTROLLER) {
+      // initialize and configure the impedance controller
     }
     else{
         ROS_ERROR("Unknown trial controller arm type");

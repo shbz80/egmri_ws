@@ -30,17 +30,20 @@ message Sample {
 enum ActuatorType {
   LEFT_ARM = 0;
   RIGHT_ARM = 1;
-  TOTAL_ACTUATOR_TYPES = 2;
+  BOTH = 2;
+  TOTAL_ACTUATOR_TYPES = 3;
 }
 
 // Enum for position control modes (sent in PositionCommand msg)
 enum PositionControlMode {
   NO_CONTROL = 0;
   JOINT_SPACE = 1;
-  TOTAL_CONTROL_MODES = 2;
+  JOINT_SPACE_HOLD = 2;
+  TOTAL_CONTROL_MODES = 3;
 }
 
 enum ControllerType {
   TF_CONTROLLER = 0;
-  TOTAL_CONTROLLER_TYPES = 1;
+  IMP_CONTROLLER = 1;
+  TOTAL_CONTROLLER_TYPES = 2;
 }

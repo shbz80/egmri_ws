@@ -314,8 +314,8 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
         // left_arm_fric_trq_[i] = sign*left_arm_stat_fric_[i]*0.5 + speed*left_arm_dyn_fric_[i]*0;
         // if (left_arm_torques_[i]==0) left_arm_fric_trq_[i] = 0;
         left_arm_fric_trq_[i] = (controller_counter_%2)?(left_arm_stat_fric_[i]*left_arm_stat_fric_percent[i]):(left_arm_stat_fric_[i]*-left_arm_stat_fric_percent[i]);
-        left_arm_joint_states_[i].setCommand(left_arm_torques_[i]);
-        // left_arm_joint_states_[i].setCommand(left_arm_torques_[i] + left_arm_fric_trq_[i]);
+        // left_arm_joint_states_[i].setCommand(left_arm_torques_[i]);
+        left_arm_joint_states_[i].setCommand(left_arm_torques_[i] + left_arm_fric_trq_[i]);
         // left_arm_joint_states_[i].setCommand(0);
       }
     // ROS_INFO_STREAM_THROTTLE(1,"left arm joint pos: "<<left_arm_pos_);
@@ -326,8 +326,8 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
         //right_arm_joint_states_[i].setCommand(right_arm_torques_[i]);
         right_arm_pos_[i] =  right_arm_joint_states_[i].getPosition();
         right_arm_fric_trq_[i] = (controller_counter_%2)?(right_arm_stat_fric_[i]*right_arm_stat_fric_percent[i]):(right_arm_stat_fric_[i]*-right_arm_stat_fric_percent[i]);
-        right_arm_joint_states_[i].setCommand(right_arm_torques_[i]);
-        // right_arm_joint_states_[i].setCommand(right_arm_torques_[i] + right_arm_fric_trq_[i]);
+        // right_arm_joint_states_[i].setCommand(right_arm_torques_[i]);
+        right_arm_joint_states_[i].setCommand(right_arm_torques_[i] + right_arm_fric_trq_[i]);
         // right_arm_joint_states_[i].setCommand(0);
       }
     // ROS_INFO_STREAM_THROTTLE(1,"right arm joint pos: "<<right_arm_pos_);

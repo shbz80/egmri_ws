@@ -99,12 +99,13 @@ void protobuf_AddDesc_egmri_2eproto() {
     "\007 \003(\002B\002\020\001\022\020\n\004meta\030\010 \003(\002B\002\020\001*a\n\nSampleTyp"
     "e\022\n\n\006ACTION\020\000\022\020\n\014JOINT_ANGLES\020\001\022\024\n\020JOINT"
     "_VELOCITIES\020\002\022\t\n\005NOISE\020\003\022\024\n\020TOTAL_DATA_T"
-    "YPES\020\004*E\n\014ActuatorType\022\014\n\010LEFT_ARM\020\000\022\r\n\t"
-    "RIGHT_ARM\020\001\022\030\n\024TOTAL_ACTUATOR_TYPES\020\002*O\n"
-    "\023PositionControlMode\022\016\n\nNO_CONTROL\020\000\022\017\n\013"
-    "JOINT_SPACE\020\001\022\027\n\023TOTAL_CONTROL_MODES\020\002*\?"
-    "\n\016ControllerType\022\021\n\rTF_CONTROLLER\020\000\022\032\n\026T"
-    "OTAL_CONTROLLER_TYPES\020\001", 463);
+    "YPES\020\004*O\n\014ActuatorType\022\014\n\010LEFT_ARM\020\000\022\r\n\t"
+    "RIGHT_ARM\020\001\022\010\n\004BOTH\020\002\022\030\n\024TOTAL_ACTUATOR_"
+    "TYPES\020\003*e\n\023PositionControlMode\022\016\n\nNO_CON"
+    "TROL\020\000\022\017\n\013JOINT_SPACE\020\001\022\024\n\020JOINT_SPACE_H"
+    "OLD\020\002\022\027\n\023TOTAL_CONTROL_MODES\020\003*S\n\016Contro"
+    "llerType\022\021\n\rTF_CONTROLLER\020\000\022\022\n\016IMP_CONTR"
+    "OLLER\020\001\022\032\n\026TOTAL_CONTROLLER_TYPES\020\002", 515);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "egmri.proto", &protobuf_RegisterTypes);
   Sample::default_instance_ = new Sample();
@@ -144,6 +145,7 @@ bool ActuatorType_IsValid(int value) {
     case 0:
     case 1:
     case 2:
+    case 3:
       return true;
     default:
       return false;
@@ -159,6 +161,7 @@ bool PositionControlMode_IsValid(int value) {
     case 0:
     case 1:
     case 2:
+    case 3:
       return true;
     default:
       return false;
@@ -173,6 +176,7 @@ bool ControllerType_IsValid(int value) {
   switch(value) {
     case 0:
     case 1:
+    case 2:
       return true;
     default:
       return false;
