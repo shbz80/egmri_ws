@@ -40,7 +40,6 @@ add_message_files(FILES
     DataRequest.msg
     DataType.msg
     PositionCommand.msg
-    RelaxCommand.msg
     SampleResult.msg
     TfActionCommand.msg
     TfObsData.msg

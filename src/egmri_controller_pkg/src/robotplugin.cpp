@@ -57,7 +57,6 @@ void RobotPlugin::initialize_ros(ros::NodeHandle& n)
     position_subscriber_ = n.subscribe("/egmri_controller_position_command", 1, &RobotPlugin::position_subscriber_callback, this);
     trial_subscriber_ = n.subscribe("/egmri_controller_trial_command", 1, &RobotPlugin::trial_subscriber_callback, this);
     test_sub_ = n.subscribe("/test_sub", 1, &RobotPlugin::test_callback, this);
-    relax_subscriber_ = n.subscribe("/egmri_controller_relax_command", 1, &RobotPlugin::relax_subscriber_callback, this);
     data_request_subscriber_ = n.subscribe("/egmri_controller_data_request", 1, &RobotPlugin::data_request_subscriber_callback, this);
 
     // Create publishers.
@@ -378,22 +377,6 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
 //
 void RobotPlugin::test_callback(const std_msgs::Empty::ConstPtr& msg){
     ROS_INFO_STREAM("Received test message");
-}
-//
-void RobotPlugin::relax_subscriber_callback(const egmri_controller_pkg::RelaxCommand::ConstPtr& msg){
-
-    ROS_INFO_STREAM("received relax command");
-    OptionsMap params;
-    int8_t arm = msg->arm;
-    params["mode"] = egmri::NO_CONTROL;
-
-    if(arm == egmri::LEFT_ARM){
-        left_pos_controller_->configure_controller(params);
-    }else if (arm == egmri::RIGHT_ARM){
-        right_pos_controller_->configure_controller(params);
-    }else{
-        ROS_ERROR("Unknown position controller arm type");
-    }
 }
 //
 void RobotPlugin::data_request_subscriber_callback(const egmri_controller_pkg::DataRequest::ConstPtr& msg) {
