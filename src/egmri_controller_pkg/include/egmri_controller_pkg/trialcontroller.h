@@ -35,7 +35,7 @@ private:
     std::vector<egmri::SampleType> state_datatypes_;
     std::vector<egmri::SampleType> obs_datatypes_;
     // end effector target (subtracted before control is computed)
-    Eigen::VectorXd ee_tgt_;
+    // Eigen::VectorXd ee_tgt_;
 
     egmri::ActuatorType arm_;
 

@@ -64,14 +64,14 @@ protected:
     boost::scoped_ptr<PositionController> left_pos_controller_;
     // // Current trial controller (if any).
     boost::scoped_ptr<TrialController> trial_controller_;
-    // // Sensor data for the current time step.
-    boost::scoped_ptr<Sample> current_time_step_sample_;
-    // // Auxiliary Sensor data for the current time step.
-    boost::scoped_ptr<Sample> aux_current_time_step_sample_;
-    // // Sensors.
-    std::vector<boost::shared_ptr<Sensor> > sensors_;
-    // // Auxiliary Sensors.
-    std::vector<boost::shared_ptr<Sensor> > aux_sensors_;
+    // // Sensor data for the current time step (left).
+    boost::scoped_ptr<Sample> current_time_step_sample_left_;
+    // // Sensor data for the current time step (right).
+    boost::scoped_ptr<Sample> current_time_step_sample_right_;
+    // // Left sensors.
+    std::vector<boost::shared_ptr<Sensor> > left_sensors_;
+    // // Right sensors.
+    std::vector<boost::shared_ptr<Sensor> > right_sensors_;
     // // KDL chains for the end-effectors.
     // KDL::Chain right_arm_fk_chain_, left_arm_fk_chain_;
     // // KDL solvers for the end-effectors.
@@ -91,10 +91,10 @@ protected:
     // // Publishers.
     // // Publish result of a trial, completion of position command, or just a report.
     ros_publisher_ptr(egmri_controller_pkg::SampleResult) report_publisher_;
-    // Is a trial arm data request pending?
-    bool trial_data_request_waiting_;
-    // Is a auxiliary data request pending?
-    bool aux_data_request_waiting_;
+    // Is a left arm data request pending?
+    bool left_data_request_waiting_;
+    // Is a right arm data request pending?
+    bool right_data_request_waiting_;
     // Are the sensors initialized?
     bool sensors_initialized_;
     // Is everything initialized for the trial controller?

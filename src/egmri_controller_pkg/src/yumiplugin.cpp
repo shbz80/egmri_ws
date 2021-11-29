@@ -244,7 +244,7 @@ void EGMRIYumiPlugin::starting(const ros::Time& time)
     //for (int sensor = 0; sensor < TotalSensorTypes; sensor++)
     for (int sensor = 0; sensor < 1; sensor++)
     {
-        sensors_[sensor]->reset(this,last_update_time_);
+        left_sensors_[sensor]->reset(this,last_update_time_);
     }
 
     // Reset position controllers.
@@ -350,7 +350,7 @@ void EGMRIYumiPlugin::get_joint_encoder_readings(Eigen::VectorXd &angles, egmri:
             angles.resize(right_arm_joint_states_.size());
         for (unsigned i = 0; i < angles.size(); i++)
             angles(i) = right_arm_joint_states_[i].getPosition();
-        //ROS_INFO_STREAM_THROTTLE(1,"aux arm joint angles: "<<angles);
+        //ROS_INFO_STREAM_THROTTLE(1,"right arm joint angles: "<<angles);
     }
     else if (arm == egmri::LEFT_ARM)
     {

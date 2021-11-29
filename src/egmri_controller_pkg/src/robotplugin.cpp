@@ -28,8 +28,8 @@ RobotPlugin::~RobotPlugin()
 void RobotPlugin::initialize(ros::NodeHandle& n)
 {
     ROS_INFO_STREAM("Initializing RobotPlugin");
-    trial_data_request_waiting_ = false;
-    aux_data_request_waiting_ = false;
+    left_data_request_waiting_ = false;
+    right_data_request_waiting_ = false;
     sensors_initialized_ = false;
     controller_initialized_ = false;
 
@@ -72,34 +72,34 @@ void RobotPlugin::initialize_sensors(ros::NodeHandle& n)
 {
     ROS_INFO_STREAM("Init sensors");
     // Clear out the old sensors.
-    sensors_.clear();
+    left_sensors_.clear();
 
     // Create all sensors.
     for (int i = 0; i < 1; i++)
     // TODO: ZDM: read this when more sensors work
     //for (int i = 0; i < TotalSensorTypes; i++)
     {
-        ROS_INFO_STREAM("creating sensor: " + to_string(i));
+        ROS_INFO_STREAM("creating left sensor: " + to_string(i));
         boost::shared_ptr<Sensor> sensor(Sensor::create_sensor((SensorType)i,n,this, egmri::LEFT_ARM));
-        sensors_.push_back(sensor);
+        left_sensors_.push_back(sensor);
     }
 
     // Create current state sample and populate it using the sensors.
-    current_time_step_sample_.reset(new Sample(MAX_TRIAL_LENGTH));
-    initialize_sample(current_time_step_sample_, egmri::LEFT_ARM);
+    current_time_step_sample_left_.reset(new Sample(MAX_TRIAL_LENGTH));
+    initialize_sample(current_time_step_sample_left_, egmri::LEFT_ARM);
 
-    aux_sensors_.clear();
-    // Create all auxiliary sensors.  Currently only an encodersensor
+    right_sensors_.clear();
+    // Create all right sensors.  Currently only an encodersensor
     for (int i = 0; i < 1; i++)
     {
-        ROS_INFO_STREAM("creating auxiliary sensor: " + to_string(i));
+        ROS_INFO_STREAM("creating right sensor: " + to_string(i));
         boost::shared_ptr<Sensor> sensor(Sensor::create_sensor((SensorType)i,n,this, egmri::RIGHT_ARM));
-        aux_sensors_.push_back(sensor);
+        right_sensors_.push_back(sensor);
     }
 
     // Create current state sample and populate it using the sensors.
-    aux_current_time_step_sample_.reset(new Sample(1));
-    initialize_sample(aux_current_time_step_sample_, egmri::RIGHT_ARM);
+    current_time_step_sample_right_.reset(new Sample(1));
+    initialize_sample(current_time_step_sample_right_, egmri::RIGHT_ARM);
 
     sensors_initialized_ = true;
 }
@@ -108,21 +108,21 @@ void RobotPlugin::initialize_sensors(ros::NodeHandle& n)
 // Helper method to configure all sensors
 void RobotPlugin::configure_sensors()
 {
-    ROS_INFO("configure sensors");
+    ROS_INFO("configure left sensors");
     sensors_initialized_ = false;
-    for (int i = 0; i < sensors_.size(); i++)
+    for (int i = 0; i < left_sensors_.size(); i++)
     {
-        sensors_[i]->set_sample_data_format(current_time_step_sample_);
+        left_sensors_[i]->set_sample_data_format(current_time_step_sample_left_);
     }
     // Set sample data format on the actions, which are not handled by any sensor.
     OptionsMap sample_metadata;
-    current_time_step_sample_->set_meta_data(
+    current_time_step_sample_left_->set_meta_data(
         egmri::ACTION,left_arm_torques_.size(),SampleDataFormatEigenVector,sample_metadata);
 
-    // configure auxiliary sensors
-    for (int i = 0; i < aux_sensors_.size(); i++)
+    // configure right sensors
+    for (int i = 0; i < right_sensors_.size(); i++)
     {
-        aux_sensors_[i]->set_sample_data_format(aux_current_time_step_sample_);
+        right_sensors_[i]->set_sample_data_format(current_time_step_sample_right_);
     }
     sensors_initialized_ = true;
 }
@@ -144,9 +144,9 @@ void RobotPlugin::initialize_sample(boost::scoped_ptr<Sample>& sample, egmri::Ac
     // Go through all of the sensors and initialize metadata.
     if (actuator_type == egmri::LEFT_ARM)
     {
-        for (int i = 0; i < sensors_.size(); i++)
+        for (int i = 0; i < left_sensors_.size(); i++)
         {
-            sensors_[i]->set_sample_data_format(sample);
+            left_sensors_[i]->set_sample_data_format(sample);
         }
         // Set sample data format on the actions, which are not handled by any sensor.
         OptionsMap sample_metadata;
@@ -154,9 +154,9 @@ void RobotPlugin::initialize_sample(boost::scoped_ptr<Sample>& sample, egmri::Ac
     }
     else if (actuator_type == egmri::RIGHT_ARM)
     {
-        for (int i = 0; i < aux_sensors_.size(); i++)
+        for (int i = 0; i < right_sensors_.size(); i++)
         {
-            aux_sensors_[i]->set_sample_data_format(sample);
+            right_sensors_[i]->set_sample_data_format(sample);
         }
     }
     ROS_INFO("set sample data format");
@@ -168,34 +168,34 @@ void RobotPlugin::update_sensors(ros::Time current_time, bool is_controller_step
     if (!sensors_initialized_) return; // Don't try to use sensors until initialization finishes.
 
     // Update all of the sensors and fill in the sample.
-    for (int sensor = 0; sensor < sensors_.size(); sensor++)
+    for (int sensor = 0; sensor < left_sensors_.size(); sensor++)
     {
-        sensors_[sensor]->update(this, current_time, is_controller_step);
+        left_sensors_[sensor]->update(this, current_time, is_controller_step);
         if (trial_controller_ != NULL){
-            sensors_[sensor]->set_sample_data(current_time_step_sample_,
+            left_sensors_[sensor]->set_sample_data(current_time_step_sample_left_,
                 trial_controller_->get_step_counter());
         }
         else {
-            sensors_[sensor]->set_sample_data(current_time_step_sample_, 0);
+            left_sensors_[sensor]->set_sample_data(current_time_step_sample_left_, 0);
         }
     }
 
-    // Update all of the auxiliary sensors and fill in the sample.
-    for (int sensor = 0; sensor < aux_sensors_.size(); sensor++)
+    // Update all of the right sensors and fill in the sample.
+    for (int sensor = 0; sensor < right_sensors_.size(); sensor++)
     {
-        aux_sensors_[sensor]->update(this, current_time, is_controller_step);
-        aux_sensors_[sensor]->set_sample_data(aux_current_time_step_sample_, 0);
+        right_sensors_[sensor]->update(this, current_time, is_controller_step);
+        right_sensors_[sensor]->set_sample_data(current_time_step_sample_right_, 0);
     }
 
     // If a data request is waiting, publish the sample.
-    if (trial_data_request_waiting_) {
-        publish_sample_report(current_time_step_sample_);
-        trial_data_request_waiting_ = false;
+    if (left_data_request_waiting_) {
+        publish_sample_report(current_time_step_sample_left_);
+        left_data_request_waiting_ = false;
     }
 
-    if (aux_data_request_waiting_) {
-        publish_sample_report(aux_current_time_step_sample_);
-        aux_data_request_waiting_ = false;
+    if (right_data_request_waiting_) {
+        publish_sample_report(current_time_step_sample_right_);
+        right_data_request_waiting_ = false;
     }
 }
 
@@ -204,7 +204,7 @@ void RobotPlugin::update_controllers(ros::Time current_time, bool is_controller_
 {
     // Update right arm controller.
     // TODO - don't pass in wrong sample if used
-    right_pos_controller_->update(this, current_time, current_time_step_sample_, right_arm_torques_);
+    right_pos_controller_->update(this, current_time, current_time_step_sample_left_, right_arm_torques_);
 
     bool trial_init = trial_controller_ != NULL && trial_controller_->is_configured() && controller_initialized_;
     if(!is_controller_step && trial_init){
@@ -212,14 +212,14 @@ void RobotPlugin::update_controllers(ros::Time current_time, bool is_controller_
     }
 
     // If we have a trial controller, update that, otherwise update position controller.
-    if (trial_init) trial_controller_->update(this, current_time, current_time_step_sample_, left_arm_torques_);
-    else left_pos_controller_->update(this, current_time, current_time_step_sample_, left_arm_torques_);
+    if (trial_init) trial_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
+    else left_pos_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
 
     // Check if the trial controller finished and delete it.
     if (trial_init && trial_controller_->is_finished()) {
 
         // Publish sample after trial completion
-        publish_sample_report(current_time_step_sample_, trial_controller_->get_trial_length());
+        publish_sample_report(current_time_step_sample_left_, trial_controller_->get_trial_length());
         //Clear the trial controller.
         trial_controller_->reset(current_time);
         trial_controller_.reset(NULL);
@@ -232,20 +232,20 @@ void RobotPlugin::update_controllers(ros::Time current_time, bool is_controller_
         // Switch the sensors to run at full frequency.
         for (int sensor = 0; sensor < TotalSensorTypes; sensor++)
         {
-            //sensors_[sensor]->set_update(left_pos_controller_->get_update_delay());
+            //left_sensors_[sensor]->set_update(left_pos_controller_->get_update_delay());
         }
         ROS_INFO_STREAM("Set the left arm controller to NO_CONTROL");
     }
     if (left_pos_controller_->report_waiting){
         if (left_pos_controller_->is_finished()){
           // ROS_INFO_STREAM("left_pos_controller_report_init");
-            publish_sample_report(current_time_step_sample_);
+            publish_sample_report(current_time_step_sample_left_);
             left_pos_controller_->report_waiting = false;
         }
     }
     if (right_pos_controller_->report_waiting){
         if (right_pos_controller_->is_finished()){
-            publish_sample_report(current_time_step_sample_);
+            publish_sample_report(current_time_step_sample_left_);
             right_pos_controller_->report_waiting = false;
         }
     }
@@ -331,14 +331,14 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
                 T, MAX_TRIAL_LENGTH);
     }
 
-    initialize_sample(current_time_step_sample_, egmri::LEFT_ARM);
+    initialize_sample(current_time_step_sample_left_, egmri::LEFT_ARM);
 
     float frequency = msg->frequency;  // Controller frequency
 
     // Update sensor frequency
-    for (int sensor = 0; sensor < sensors_.size(); sensor++)
+    for (int sensor = 0; sensor < left_sensors_.size(); sensor++)
     {
-        sensors_[sensor]->set_update(1.0/frequency);
+        left_sensors_[sensor]->set_update(1.0/frequency);
     }
 
     std::vector<int> state_datatypes, obs_datatypes;
@@ -388,11 +388,11 @@ void RobotPlugin::data_request_subscriber_callback(const egmri_controller_pkg::D
         egmri::ActuatorType arm_type = (egmri::ActuatorType) arm;
         if (arm_type == egmri::LEFT_ARM)
         {
-            trial_data_request_waiting_ = true;
+            left_data_request_waiting_ = true;
         }
         else if (arm_type == egmri::RIGHT_ARM)
         {
-            aux_data_request_waiting_ = true;
+            right_data_request_waiting_ = true;
         }
     }
     else
@@ -408,12 +408,12 @@ Sensor *RobotPlugin::get_sensor(SensorType sensor, egmri::ActuatorType actuator_
     if(actuator_type == egmri::LEFT_ARM)
     {
         assert(sensor < TotalSensorTypes);
-        return sensors_[sensor].get();
+        return left_sensors_[sensor].get();
     }
     else if (actuator_type == egmri::RIGHT_ARM)
     {
-        assert((int)sensor < aux_sensors_.size());
-        return aux_sensors_[sensor].get();
+        assert((int)sensor < right_sensors_.size());
+        return right_sensors_[sensor].get();
     }
 }
 

@@ -80,6 +80,8 @@ void PositionController::update(RobotPlugin *plugin, ros::Time current_time, boo
     // Update last update time.
     last_update_time_ = current_time;
 
+    // ROS_INFO_STREAM("mode:"<<mode_);
+
     // If we're doing any kind of control at all, compute torques now.
     if (mode_ != egmri::NO_CONTROL)
     {
@@ -173,6 +175,7 @@ bool PositionController::is_finished() const
         return (error < epspos && vel < epsvel);
     }
     else if (mode_ == egmri::NO_CONTROL){
+        // ROS_INFO_STREAM_THROTTLE(1,"Mode is NO_CONTROL");
         return true;
     }
 }
