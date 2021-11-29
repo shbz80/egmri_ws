@@ -18,7 +18,6 @@ with the robot.
 
 #include "egmri_controller_pkg/PositionCommand.h"
 #include "egmri_controller_pkg/TrialCommand.h"
-#include "egmri_controller_pkg/RelaxCommand.h"
 #include "egmri_controller_pkg/SampleResult.h"
 #include "egmri_controller_pkg/DataRequest.h"
 #include "egmri_controller_pkg/TfActionCommand.h"
@@ -48,7 +47,7 @@ class Sample;
 class SampleResult;
 class PositionCommand;
 class TrialCommand;
-class RelaxCommand;
+// class RelaxCommand;
 
 
 class RobotPlugin
@@ -86,7 +85,7 @@ protected:
     ros::Subscriber trial_subscriber_;
     ros::Subscriber test_sub_;
     // // Subscriber for relax commands.
-    ros::Subscriber relax_subscriber_;
+    // ros::Subscriber relax_subscriber_;
     // // Subscriber for current state report request.
     ros::Subscriber data_request_subscriber_;
     // // Publishers.
@@ -134,7 +133,7 @@ public:
     virtual void trial_subscriber_callback(const egmri_controller_pkg::TrialCommand::ConstPtr& msg);
     virtual void test_callback(const std_msgs::Empty::ConstPtr& msg);
     // // Relax command callback.
-    virtual void relax_subscriber_callback(const egmri_controller_pkg::RelaxCommand::ConstPtr& msg);
+    // virtual void relax_subscriber_callback(const egmri_controller_pkg::RelaxCommand::ConstPtr& msg);
     // // Data request callback.
     virtual void data_request_subscriber_callback(const egmri_controller_pkg::DataRequest::ConstPtr& msg);
     // //tf callback
