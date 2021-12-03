@@ -10,10 +10,14 @@ EncoderSensor::EncoderSensor(ros::NodeHandle& n, RobotPlugin *plugin, egmri::Act
     actuator_type_ = actuator_type;
 
     // Get current joint angles.
-    plugin->get_joint_encoder_readings(previous_angles_, actuator_type);
+    // use get_joint_state_readings for both position and velocities
+    // plugin->get_joint_encoder_readings(previous_angles_, actuator_type);
 
     // Initialize velocities.
     previous_velocities_.resize(previous_angles_.size());
+
+    // Get current joint state.
+    plugin->get_joint_state_readings(previous_angles_, previous_velocities_, actuator_type);
 
     // Initialize temporary angles.
     temp_joint_angles_.resize(previous_angles_.size());
@@ -39,50 +43,50 @@ void EncoderSensor::update(RobotPlugin *plugin, ros::Time current_time, bool is_
     //REMOVE
     //Eigen::VectorXd temp_temp_joint_angles_, err_temp_joint_angles;
     // Get new vector of joint angles from plugin.
-    plugin->get_joint_encoder_readings(temp_joint_angles_, actuator_type_);
+    // plugin->get_joint_encoder_readings(temp_joint_angles_, actuator_type_);
+    plugin->get_joint_state_readings(previous_angles_, previous_velocities_, actuator_type_);
     // temp_temp_joint_angles_ = temp_joint_angles_;
-    joint_filter_->update(update_time, temp_joint_angles_);
-    // joint_filter_->get_state(temp_joint_angles_);
-    // err_temp_joint_angles = temp_temp_joint_angles_ - temp_joint_angles_;
-    // ROS_DEBUG_STREAM_NAMED("ekf_filt_pos_error",err_temp_joint_angles);
-    if (is_controller_step)
-    {
-        // Get filtered joint angles
-        joint_filter_->get_state(temp_joint_angles_);
+    // joint_filter_->update(update_time, temp_joint_angles_);
 
-        // Compute velocities.
-        // Note that we can't assume the last angles are actually from one step ago, so we check first.
-        // If they are roughly from one step ago, assume the step is correct, otherwise use actual time.
-
-        double update_time = current_time.toSec() - previous_angles_time_.toSec();
-        if (!previous_angles_time_.isZero())
-        { // Only compute velocities if we have a previous sample.
-            if (fabs(update_time)/sensor_step_length_ >= 0.5 &&
-                fabs(update_time)/sensor_step_length_ <= 2.0)
-            {
-                // previous_end_effector_point_velocities_ = (temp_end_effector_points_ - previous_end_effector_points_)/sensor_step_length_;
-                for (unsigned i = 0; i < previous_velocities_.size(); i++){
-                    previous_velocities_[i] = (temp_joint_angles_[i] - previous_angles_[i])/sensor_step_length_;
-                }
-            }
-            else
-            {
-                // previous_end_effector_point_velocities_ = (temp_end_effector_points_ - previous_end_effector_points_)/update_time;
-                for (unsigned i = 0; i < previous_velocities_.size(); i++){
-                    previous_velocities_[i] = (temp_joint_angles_[i] - previous_angles_[i])/update_time;
-                }
-            }
-        }
-
-        // Move temporaries into the previous joint angles.
-        // previous_end_effector_points_ = temp_end_effector_points_;
-        for (unsigned i = 0; i < previous_angles_.size(); i++){
-            previous_angles_[i] = temp_joint_angles_[i];
-        }
-
-        // Update stored time.
-        previous_angles_time_ = current_time;
-    }
+    // if (is_controller_step)
+    // {
+    //     // Get filtered joint angles
+    //     // joint_filter_->get_state(temp_joint_angles_);
+    //
+    //     // Compute velocities.
+    //     // Note that we can't assume the last angles are actually from one step ago, so we check first.
+    //     // If they are roughly from one step ago, assume the step is correct, otherwise use actual time.
+    //
+    //     double update_time = current_time.toSec() - previous_angles_time_.toSec();
+    //     if (!previous_angles_time_.isZero())
+    //     { // Only compute velocities if we have a previous sample.
+    //         if (fabs(update_time)/sensor_step_length_ >= 0.5 &&
+    //             fabs(update_time)/sensor_step_length_ <= 2.0)
+    //         {
+    //             // previous_end_effector_point_velocities_ = (temp_end_effector_points_ - previous_end_effector_points_)/sensor_step_length_;
+    //             for (unsigned i = 0; i < previous_velocities_.size(); i++){
+    //                 // previous_velocities_[i] = (temp_joint_angles_[i] - previous_angles_[i])/sensor_step_length_;
+    //                 previous_velocities_[i] = (temp_joint_angles_[i] - previous_angles_[i])/update_time;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             // previous_end_effector_point_velocities_ = (temp_end_effector_points_ - previous_end_effector_points_)/update_time;
+    //             for (unsigned i = 0; i < previous_velocities_.size(); i++){
+    //                 previous_velocities_[i] = (temp_joint_angles_[i] - previous_angles_[i])/update_time;
+    //             }
+    //         }
+    //     }
+    //
+    //     // Move temporaries into the previous joint angles.
+    //     // previous_end_effector_points_ = temp_end_effector_points_;
+    //     for (unsigned i = 0; i < previous_angles_.size(); i++){
+    //         previous_angles_[i] = temp_joint_angles_[i];
+    //     }
+    //
+    //     // Update stored time.
+    //     previous_angles_time_ = current_time;
+    // }
 }
 
 // Set data format and meta data on the provided sample.

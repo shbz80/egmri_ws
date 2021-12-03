@@ -3,6 +3,8 @@
 #include "egmri_controller_pkg/controller.h"
 #include "egmri_controller_pkg/positioncontroller.h"
 #include "egmri_controller_pkg/trialcontroller.h"
+#include "egmri_controller_pkg/dualtrialcontroller.h"
+#include "egmri_controller_pkg/dualimpedancecontroller.h"
 #include "egmri_controller_pkg/tfcontroller.h"
 #include "egmri_controller_pkg/TfParams.h"
 #include "egmri_controller_pkg/ControllerParams.h"
@@ -30,9 +32,12 @@ void RobotPlugin::initialize(ros::NodeHandle& n)
     ROS_INFO_STREAM("Initializing RobotPlugin");
     left_data_request_waiting_ = false;
     right_data_request_waiting_ = false;
+    left_trial_data_waiting_ = false;
+    right_trial_data_waiting_ = false;
     sensors_initialized_ = false;
     controller_initialized_ = false;
-
+    is_left_active_ = false;
+    is_right_active_ = false;
     // Initialize all ROS communication infrastructure.
     initialize_ros(n);
 
@@ -76,8 +81,6 @@ void RobotPlugin::initialize_sensors(ros::NodeHandle& n)
 
     // Create all sensors.
     for (int i = 0; i < 1; i++)
-    // TODO: ZDM: read this when more sensors work
-    //for (int i = 0; i < TotalSensorTypes; i++)
     {
         ROS_INFO_STREAM("creating left sensor: " + to_string(i));
         boost::shared_ptr<Sensor> sensor(Sensor::create_sensor((SensorType)i,n,this, egmri::LEFT_ARM));
@@ -98,7 +101,7 @@ void RobotPlugin::initialize_sensors(ros::NodeHandle& n)
     }
 
     // Create current state sample and populate it using the sensors.
-    current_time_step_sample_right_.reset(new Sample(1));
+    current_time_step_sample_right_.reset(new Sample(MAX_TRIAL_LENGTH));
     initialize_sample(current_time_step_sample_right_, egmri::RIGHT_ARM);
 
     sensors_initialized_ = true;
@@ -108,22 +111,26 @@ void RobotPlugin::initialize_sensors(ros::NodeHandle& n)
 // Helper method to configure all sensors
 void RobotPlugin::configure_sensors()
 {
-    ROS_INFO("configure left sensors");
+    ROS_INFO("configure sensors");
     sensors_initialized_ = false;
     for (int i = 0; i < left_sensors_.size(); i++)
     {
         left_sensors_[i]->set_sample_data_format(current_time_step_sample_left_);
     }
     // Set sample data format on the actions, which are not handled by any sensor.
-    OptionsMap sample_metadata;
+    OptionsMap sample_metadata_left;
     current_time_step_sample_left_->set_meta_data(
-        egmri::ACTION,left_arm_torques_.size(),SampleDataFormatEigenVector,sample_metadata);
+        egmri::ACTION,left_arm_torques_.size(),SampleDataFormatEigenVector,sample_metadata_left);
 
     // configure right sensors
     for (int i = 0; i < right_sensors_.size(); i++)
     {
         right_sensors_[i]->set_sample_data_format(current_time_step_sample_right_);
     }
+    // Set sample data format on the actions, which are not handled by any sensor.
+    OptionsMap sample_metadata_right;
+    current_time_step_sample_right_->set_meta_data(
+        egmri::ACTION,right_arm_torques_.size(),SampleDataFormatEigenVector,sample_metadata_right);
     sensors_initialized_ = true;
 }
 
@@ -158,6 +165,8 @@ void RobotPlugin::initialize_sample(boost::scoped_ptr<Sample>& sample, egmri::Ac
         {
             right_sensors_[i]->set_sample_data_format(sample);
         }
+        OptionsMap sample_metadata;
+        sample->set_meta_data(egmri::ACTION,right_arm_torques_.size(),SampleDataFormatEigenVector,sample_metadata);
     }
     ROS_INFO("set sample data format");
 }
@@ -167,13 +176,20 @@ void RobotPlugin::update_sensors(ros::Time current_time, bool is_controller_step
 {
     if (!sensors_initialized_) return; // Don't try to use sensors until initialization finishes.
 
-    // Update all of the sensors and fill in the sample.
+    // Update all of the left sensors and fill in the sample.
     for (int sensor = 0; sensor < left_sensors_.size(); sensor++)
     {
         left_sensors_[sensor]->update(this, current_time, is_controller_step);
-        if (trial_controller_ != NULL){
-            left_sensors_[sensor]->set_sample_data(current_time_step_sample_left_,
-                trial_controller_->get_step_counter());
+        if (((trial_controller_ != NULL)||(dual_trial_controller_== NULL))&&is_left_active_)
+        {
+          left_sensors_[sensor]->set_sample_data(current_time_step_sample_left_,
+              trial_controller_->get_step_counter());
+
+        }
+        else if (((trial_controller_ == NULL)||(dual_trial_controller_!= NULL))&&is_left_active_)
+        {
+          left_sensors_[sensor]->set_sample_data(current_time_step_sample_left_,
+              dual_trial_controller_->get_step_counter());
         }
         else {
             left_sensors_[sensor]->set_sample_data(current_time_step_sample_left_, 0);
@@ -184,7 +200,20 @@ void RobotPlugin::update_sensors(ros::Time current_time, bool is_controller_step
     for (int sensor = 0; sensor < right_sensors_.size(); sensor++)
     {
         right_sensors_[sensor]->update(this, current_time, is_controller_step);
-        right_sensors_[sensor]->set_sample_data(current_time_step_sample_right_, 0);
+        if (((trial_controller_ != NULL)||(dual_trial_controller_== NULL))&&is_right_active_)
+        {
+          right_sensors_[sensor]->set_sample_data(current_time_step_sample_right_,
+              trial_controller_->get_step_counter());
+
+        }
+        else if (((trial_controller_ == NULL)||(dual_trial_controller_!= NULL))&&is_right_active_)
+        {
+          right_sensors_[sensor]->set_sample_data(current_time_step_sample_right_,
+              dual_trial_controller_->get_step_counter());
+        }
+        else {
+            right_sensors_[sensor]->set_sample_data(current_time_step_sample_right_, 0);
+        }
     }
 
     // If a data request is waiting, publish the sample.
@@ -204,22 +233,38 @@ void RobotPlugin::update_controllers(ros::Time current_time, bool is_controller_
 {
     // Update right arm controller.
     // TODO - don't pass in wrong sample if used
-    right_pos_controller_->update(this, current_time, current_time_step_sample_left_, right_arm_torques_);
 
     bool trial_init = trial_controller_ != NULL && trial_controller_->is_configured() && controller_initialized_;
-    if(!is_controller_step && trial_init){
+    bool dual_trial_init = dual_trial_controller_ != NULL && dual_trial_controller_->is_configured() && controller_initialized_;
+
+    if(!is_controller_step && (trial_init||dual_trial_init)){
         return;
     }
 
     // If we have a trial controller, update that, otherwise update position controller.
-    if (trial_init) trial_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
-    else left_pos_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
+    if (trial_init)
+    {
+      if (is_left_active_) trial_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
+      else left_pos_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
+      if (is_right_active_) trial_controller_->update(this, current_time, current_time_step_sample_right_, right_arm_torques_);
+      else right_pos_controller_->update(this, current_time, current_time_step_sample_right_, right_arm_torques_);
+    }
+    else if (dual_trial_init) {
+      dual_trial_controller_->update(this, current_time, current_time_step_sample_left_, current_time_step_sample_right_, left_arm_torques_, right_arm_torques_);
+      if (!is_left_active_) left_pos_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
+      if (!is_right_active_) right_pos_controller_->update(this, current_time, current_time_step_sample_right_, right_arm_torques_);
+      }
+    else {
+      left_pos_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
+      right_pos_controller_->update(this, current_time, current_time_step_sample_right_, right_arm_torques_);
+    }
 
     // Check if the trial controller finished and delete it.
     if (trial_init && trial_controller_->is_finished()) {
 
         // Publish sample after trial completion
-        publish_sample_report(current_time_step_sample_left_, trial_controller_->get_trial_length());
+        if (is_left_active_) publish_sample_report(current_time_step_sample_left_, trial_controller_->get_trial_length(), egmri::LEFT_ARM);
+        if (is_right_active_) publish_sample_report(current_time_step_sample_right_, trial_controller_->get_trial_length(), egmri::RIGHT_ARM);
         //Clear the trial controller.
         trial_controller_->reset(current_time);
         trial_controller_.reset(NULL);
@@ -227,37 +272,89 @@ void RobotPlugin::update_controllers(ros::Time current_time, bool is_controller_
         // Set the left arm controller to NO_CONTROL.
         OptionsMap options;
         options["mode"] = egmri::NO_CONTROL;
-        left_pos_controller_->configure_controller(options);
-
-        // Switch the sensors to run at full frequency.
-        for (int sensor = 0; sensor < TotalSensorTypes; sensor++)
-        {
-            //left_sensors_[sensor]->set_update(left_pos_controller_->get_update_delay());
+        if (is_left_active_) {
+          left_pos_controller_->configure_controller(options);
+          is_left_active_ = false;
         }
-        ROS_INFO_STREAM("Set the left arm controller to NO_CONTROL");
+        if (is_right_active_) {
+          right_pos_controller_->configure_controller(options);
+          is_right_active_ = false;
+        }
+      }
+
+  if (dual_trial_init && dual_trial_controller_->is_finished()) {
+
+      // Publish sample after trial completion
+
+      if (is_right_active_) {
+        ROS_INFO_STREAM("right trial to be terminated");
+        // publish_sample_report(current_time_step_sample_right_, dual_trial_controller_->get_trial_length(), egmri::RIGHT_ARM);
+        controller_step_length_ = dual_trial_controller_->get_trial_length();
+        control_step_count_ = 0;
+        right_trial_data_waiting_ = true;
+        ROS_INFO_STREAM("right trial sample sent");
+        OptionsMap options;
+        options["mode"] = egmri::NO_CONTROL;
+        right_pos_controller_->configure_controller(options);
+        is_right_active_ = false;
+        ROS_INFO_STREAM("right trial done");
+      }
+      if (is_left_active_) {
+        ROS_INFO_STREAM("left trial to be terminated");
+        // publish_sample_report(current_time_step_sample_left_, dual_trial_controller_->get_trial_length(), egmri::LEFT_ARM);
+        controller_step_length_ = dual_trial_controller_->get_trial_length();
+        control_step_count_ = 0;
+        left_trial_data_waiting_ = true;
+        ROS_INFO_STREAM("left trial sample sent");
+        OptionsMap options;
+        options["mode"] = egmri::NO_CONTROL;
+        left_pos_controller_->configure_controller(options);
+        is_left_active_ = false;
+        ROS_INFO_STREAM("left trial done");
+      }
+
+      dual_trial_controller_->reset(current_time);
+      dual_trial_controller_.reset(NULL);
     }
+
+    if (is_controller_step){
+      if (!(control_step_count_%20)){
+          // ROS_INFO_STREAM("control message tick:"<<ros::Time::now());
+          if (right_trial_data_waiting_) {
+            publish_sample_report(current_time_step_sample_right_, controller_step_length_, egmri::RIGHT_ARM);
+          }
+          if (!right_trial_data_waiting_ && left_trial_data_waiting_) {
+            publish_sample_report(current_time_step_sample_left_, controller_step_length_, egmri::LEFT_ARM);
+            left_trial_data_waiting_ = false;
+          }
+          right_trial_data_waiting_ = false;
+      }
+      control_step_count_ = control_step_count_ + 1;
+    }
+
     if (left_pos_controller_->report_waiting){
         if (left_pos_controller_->is_finished()){
           // ROS_INFO_STREAM("left_pos_controller_report_init");
-            publish_sample_report(current_time_step_sample_left_);
+            publish_sample_report(current_time_step_sample_left_, 1, egmri::LEFT_ARM);
             left_pos_controller_->report_waiting = false;
         }
     }
     if (right_pos_controller_->report_waiting){
         if (right_pos_controller_->is_finished()){
-            publish_sample_report(current_time_step_sample_left_);
+            publish_sample_report(current_time_step_sample_left_, 1, egmri::RIGHT_ARM);
             right_pos_controller_->report_waiting = false;
         }
     }
 
 }
 
-void RobotPlugin::publish_sample_report(boost::scoped_ptr<Sample>& sample, int T /*=1*/){
+void RobotPlugin::publish_sample_report(boost::scoped_ptr<Sample>& sample, int T /*=1*/, egmri::ActuatorType arm_type){
     while(!report_publisher_->trylock());
     std::vector<egmri::SampleType> dtypes;
     sample->get_available_dtypes(dtypes);
 
     report_publisher_->msg_.sensor_data.resize(dtypes.size());
+    report_publisher_->msg_.arm_datatype = arm_type;
     for(int d=0; d<dtypes.size(); d++){ //Fill in each sample type
         report_publisher_->msg_.sensor_data[d].data_type = dtypes[d];
         Eigen::VectorXd tmp_data;
@@ -289,29 +386,51 @@ void RobotPlugin::publish_sample_report(boost::scoped_ptr<Sample>& sample, int T
 void RobotPlugin::position_subscriber_callback(const egmri_controller_pkg::PositionCommand::ConstPtr& msg){
 
     ROS_INFO_STREAM("received position command");
-    OptionsMap params;
+    OptionsMap params_left, params_right;
     int8_t arm = msg->arm;
-    params["mode"] = msg->mode;
-    Eigen::VectorXd data;
-    data.resize(msg->data.size());
-    for(int i=0; i<data.size(); i++){
-        data[i] = msg->data[i];
-    }
-    params["data"] = data;
 
-    Eigen::MatrixXd pd_gains;
-    pd_gains.resize(msg->pd_gains.size() / 4, 4);
-    for(int i=0; i<pd_gains.rows(); i++){
-        for(int j=0; j<4; j++){
-            pd_gains(i, j) = msg->pd_gains[i * 4 + j];
-        }
+    if((arm == egmri::LEFT_ARM)||(arm == egmri::BOTH)){
+      params_left["mode"] = msg->mode;
+      Eigen::VectorXd data;
+      data.resize(msg->data1.size());
+      for(int i=0; i<data.size(); i++){
+          data[i] = msg->data1[i];
+      }
+      params_left["data"] = data;
+      Eigen::MatrixXd pd_gains;
+      pd_gains.resize(msg->pd_gains.size() / 4, 4);
+      for(int i=0; i<pd_gains.rows(); i++){
+          for(int j=0; j<4; j++){
+              pd_gains(i, j) = msg->pd_gains[i * 4 + j];
+          }
+      }
+      params_left["pd_gains"] = pd_gains;
     }
-    params["pd_gains"] = pd_gains;
+    if((arm == egmri::RIGHT_ARM)||(arm == egmri::BOTH)){
+      params_right["mode"] = msg->mode;
+      Eigen::VectorXd data;
+      data.resize(msg->data2.size());
+      for(int i=0; i<data.size(); i++){
+          data[i] = msg->data2[i];
+      }
+      params_right["data"] = data;
+      Eigen::MatrixXd pd_gains;
+      pd_gains.resize(msg->pd_gains.size() / 4, 4);
+      for(int i=0; i<pd_gains.rows(); i++){
+          for(int j=0; j<4; j++){
+              pd_gains(i, j) = msg->pd_gains[i * 4 + j];
+          }
+      }
+      params_right["pd_gains"] = pd_gains;
+    }
 
     if(arm == egmri::LEFT_ARM){
-        left_pos_controller_->configure_controller(params);
+        left_pos_controller_->configure_controller(params_left);
     }else if (arm == egmri::RIGHT_ARM){
-        right_pos_controller_->configure_controller(params);
+        right_pos_controller_->configure_controller(params_right);
+    }else if (arm == egmri::BOTH){
+        left_pos_controller_->configure_controller(params_left);
+        right_pos_controller_->configure_controller(params_right);
     }else{
         ROS_ERROR("Unknown position controller arm type");
     }
@@ -322,6 +441,12 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
     OptionsMap controller_params;
     ROS_INFO_STREAM("received trial command");
 
+    if (trial_controller_ != NULL && dual_trial_controller_ != NULL)
+    {
+      ROS_ERROR("Trial in progress, try later");
+      return;
+    }
+
     controller_initialized_ = false;
 
     //Read out trial information
@@ -331,16 +456,25 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
                 T, MAX_TRIAL_LENGTH);
     }
 
-    initialize_sample(current_time_step_sample_left_, egmri::LEFT_ARM);
-
+    uint arm = msg->arm_datatype;
     float frequency = msg->frequency;  // Controller frequency
 
-    // Update sensor frequency
-    for (int sensor = 0; sensor < left_sensors_.size(); sensor++)
-    {
-        left_sensors_[sensor]->set_update(1.0/frequency);
+    if (arm==egmri::LEFT_ARM || arm==egmri::BOTH){
+      initialize_sample(current_time_step_sample_left_, egmri::LEFT_ARM);
+      // Update sensor frequency
+      for (int sensor = 0; sensor < left_sensors_.size(); sensor++)
+      {
+          left_sensors_[sensor]->set_update(1.0/frequency);
+      }
     }
-
+    if(arm==egmri::RIGHT_ARM || arm==egmri::BOTH){
+      initialize_sample(current_time_step_sample_right_, egmri::RIGHT_ARM);
+      // Update sensor frequency
+      for (int sensor = 0; sensor < right_sensors_.size(); sensor++)
+      {
+          right_sensors_[sensor]->set_update(1.0/frequency);
+      }
+    }
     std::vector<int> state_datatypes, obs_datatypes;
     int arm_datatype;
     state_datatypes.resize(msg->state_datatypes.size());
@@ -362,9 +496,37 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
         int dU = (int) tfparams.dU;
         controller_params["dU"] = dU;
         trial_controller_-> configure_controller(controller_params);
+        if ((arm_datatype == egmri::LEFT_ARM)||(arm_datatype == egmri::BOTH)) is_left_active_ = true;
+        if ((arm_datatype == egmri::RIGHT_ARM)||(arm_datatype == egmri::BOTH)) is_right_active_ = true;
     }
     else if (msg->controller.controller_to_execute == egmri::IMP_CONTROLLER) {
       // initialize and configure the impedance controller
+      dual_trial_controller_.reset(new DualImpedanceController());
+      controller_params["T"] = (int)msg->T;
+      Eigen::VectorXd data1, data2;
+      data1.resize(msg->data1.size());
+      data2.resize(msg->data2.size());
+      for(int i=0; i<data1.size(); i++)
+      {
+          data1[i] = msg->data1[i];
+      }
+      for(int i=0; i<data2.size(); i++)
+      {
+          data2[i] = msg->data2[i];
+      }
+      controller_params["pos_left"] = data1;
+      controller_params["pos_right"] = data2;
+      Eigen::MatrixXd pd_gains;
+      pd_gains.resize(msg->pd_gains.size() / 4, 4);
+      for(int i=0; i<pd_gains.rows(); i++){
+          for(int j=0; j<4; j++){
+              pd_gains(i, j) = msg->pd_gains[i * 4 + j];
+          }
+      }
+      controller_params["pd_gains"] = pd_gains;
+      dual_trial_controller_-> configure_controller(controller_params);
+      if ((arm_datatype == egmri::LEFT_ARM)||(arm_datatype == egmri::BOTH)) is_left_active_ = true;
+      if ((arm_datatype == egmri::RIGHT_ARM)||(arm_datatype == egmri::BOTH)) is_right_active_ = true;
     }
     else{
         ROS_ERROR("Unknown trial controller arm type");

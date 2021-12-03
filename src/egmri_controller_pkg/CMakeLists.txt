@@ -82,6 +82,8 @@ set(DDP_FILES src/robotplugin.cpp
               src/controller.cpp
               src/positioncontroller.cpp
               src/trialcontroller.cpp
+              src/dualtrialcontroller.cpp
+              src/dualimpedancecontroller.cpp
               src/encodersensor.cpp
               src/encoderfilter.cpp
               src/util.cpp)

@@ -12,9 +12,9 @@ EGMRIYumiPlugin::EGMRIYumiPlugin()
     NUM_JOINTS = 7;
     // Some basic variable initialization.
     controller_counter_ = 0;
-    controller_step_length_ = 50; // do not use this when using controller_frequency_
-    // controller_period_ms_ = 25;
+    // control frequency is decided here, set period in micoseconds
     controller_period_ms_ = 10;
+    // a counter, should be initialized to zero
     current_controller_period_ms_ = 0;
 
     left_arm_pos_.resize(NUM_JOINTS);
@@ -34,6 +34,8 @@ EGMRIYumiPlugin::EGMRIYumiPlugin()
     right_arm_dyn_fric_.resize(NUM_JOINTS);
     right_arm_dyn_fric_.clear();
 
+    // effective friction compensation as a percentage of full frcition
+    // for each joints
     left_arm_stat_fric_percent.push_back(0.8);
     left_arm_stat_fric_percent.push_back(0.8);
     left_arm_stat_fric_percent.push_back(0.6);
@@ -50,6 +52,7 @@ EGMRIYumiPlugin::EGMRIYumiPlugin()
     right_arm_stat_fric_percent.push_back(0.5);
     right_arm_stat_fric_percent.push_back(0.5);
 
+    // static friction
     left_arm_stat_fric_.push_back(2.43);
     left_arm_stat_fric_.push_back(2.76);
     left_arm_stat_fric_.push_back(1.11);
@@ -66,6 +69,7 @@ EGMRIYumiPlugin::EGMRIYumiPlugin()
     right_arm_stat_fric_.push_back(0.2);
     right_arm_stat_fric_.push_back(0.4);
 
+    // dynamic friction
     left_arm_dyn_fric_.push_back(1.06);
     left_arm_dyn_fric_.push_back(1.09);
     left_arm_dyn_fric_.push_back(0.61);
@@ -82,6 +86,7 @@ EGMRIYumiPlugin::EGMRIYumiPlugin()
     right_arm_dyn_fric_.push_back(0.08);
     right_arm_dyn_fric_.push_back(0.08);
 
+    // variable for final friction torque
     left_arm_fric_trq_.resize(NUM_JOINTS);
     left_arm_fric_trq_.clear();
 
@@ -285,7 +290,6 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
 
     // Check if this is a controller step based on the current controller frequency.
     controller_counter_++;
-    //if (controller_counter_ >= controller_step_length_) controller_counter_ = 0;
     //bool is_controller_step = (controller_counter_ == 0);
     if (current_controller_period_ms_ >= controller_period_ms_){
       controller_counter_ = 0;
@@ -293,6 +297,7 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
       current_controller_period_ms_ = 0;
     }
     bool is_controller_step = (current_controller_period_ms_ == 0);
+    // bool is_controller_step = true;
 
     // Update the sensors and fill in the current step sample.
     update_sensors(last_update_time_,is_controller_step);
@@ -314,8 +319,8 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
         // left_arm_fric_trq_[i] = sign*left_arm_stat_fric_[i]*0.5 + speed*left_arm_dyn_fric_[i]*0;
         // if (left_arm_torques_[i]==0) left_arm_fric_trq_[i] = 0;
         left_arm_fric_trq_[i] = (controller_counter_%2)?(left_arm_stat_fric_[i]*left_arm_stat_fric_percent[i]):(left_arm_stat_fric_[i]*-left_arm_stat_fric_percent[i]);
-        // left_arm_joint_states_[i].setCommand(left_arm_torques_[i]);
-        left_arm_joint_states_[i].setCommand(left_arm_torques_[i] + left_arm_fric_trq_[i]);
+        left_arm_joint_states_[i].setCommand(left_arm_torques_[i]);
+        // left_arm_joint_states_[i].setCommand(left_arm_torques_[i] + left_arm_fric_trq_[i]);
         // left_arm_joint_states_[i].setCommand(0);
       }
     // ROS_INFO_STREAM_THROTTLE(1,"left arm joint pos: "<<left_arm_pos_);
@@ -326,8 +331,8 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
         //right_arm_joint_states_[i].setCommand(right_arm_torques_[i]);
         right_arm_pos_[i] =  right_arm_joint_states_[i].getPosition();
         right_arm_fric_trq_[i] = (controller_counter_%2)?(right_arm_stat_fric_[i]*right_arm_stat_fric_percent[i]):(right_arm_stat_fric_[i]*-right_arm_stat_fric_percent[i]);
-        // right_arm_joint_states_[i].setCommand(right_arm_torques_[i]);
-        right_arm_joint_states_[i].setCommand(right_arm_torques_[i] + right_arm_fric_trq_[i]);
+        right_arm_joint_states_[i].setCommand(right_arm_torques_[i]);
+        // right_arm_joint_states_[i].setCommand(right_arm_torques_[i] + right_arm_fric_trq_[i]);
         // right_arm_joint_states_[i].setCommand(0);
       }
     // ROS_INFO_STREAM_THROTTLE(1,"right arm joint pos: "<<right_arm_pos_);
@@ -362,6 +367,42 @@ void EGMRIYumiPlugin::get_joint_encoder_readings(Eigen::VectorXd &angles, egmri:
             //ROS_DEBUG_STREAM_THROTTLE(10,"trial arm joint angle %d: %f",i,angles(i));
           }
           // ROS_INFO_STREAM_THROTTLE(1,"trial arm joint angles: "<<angles);
+    }
+    else
+    {
+        ROS_ERROR("Unknown ArmType %i requested for joint encoder readings!",arm);
+    }
+}
+
+// Get current encoder state readings (robot-dependent).
+void EGMRIYumiPlugin::get_joint_state_readings(Eigen::VectorXd &angles, Eigen::VectorXd &angle_velocities, egmri::ActuatorType arm) const
+{
+    if (arm == egmri::RIGHT_ARM)
+    {
+        if (angles.rows() != right_arm_joint_states_.size())
+            angles.resize(right_arm_joint_states_.size());
+        for (unsigned i = 0; i < angles.size(); i++)
+            angles(i) = right_arm_joint_states_[i].getPosition();
+
+        if (angle_velocities.rows() != right_arm_joint_states_.size())
+            angle_velocities.resize(right_arm_joint_states_.size());
+        for (unsigned i = 0; i < angle_velocities.size(); i++)
+            angle_velocities(i) = right_arm_joint_states_[i].getVelocity();
+        //ROS_INFO_STREAM_THROTTLE(1,"right arm joint angles: "<<angles);
+    }
+    else if (arm == egmri::LEFT_ARM)
+    {
+        if (angles.rows() != left_arm_joint_states_.size())
+            angles.resize(left_arm_joint_states_.size());
+        for (unsigned i = 0; i < angles.size(); i++){
+            angles(i) = left_arm_joint_states_[i].getPosition();
+          }
+
+        if (angle_velocities.rows() != left_arm_joint_states_.size())
+            angle_velocities.resize(left_arm_joint_states_.size());
+        for (unsigned i = 0; i < angle_velocities.size(); i++)
+            angle_velocities(i) = left_arm_joint_states_[i].getVelocity();
+        //   // ROS_INFO_STREAM_THROTTLE(1,"trial arm joint angles: "<<angles);
     }
     else
     {

@@ -87,6 +87,9 @@ void PositionController::update(RobotPlugin *plugin, ros::Time current_time, boo
     {
         // computer current angle to dest. This is added to slow down the speed
         temp_angles_ = dest_angles_ - current_angles_;
+        // ROS_INFO_STREAM_THROTTLE(1, "dest_angles_left_:"<<dest_angles_);
+        // ROS_INFO_STREAM_THROTTLE(1, "current_angles_left_:"<<current_angles_);
+        // ROS_INFO_STREAM_THROTTLE(1, "temp_angles_left_:"<<temp_angles_);
         for(int i=0;i<7;i++){
           target_angles_(i) = std::min(std::abs(temp_angles_(i)),ANGLE)*((temp_angles_(i) >= 0.0) ? 1.0 : -1.0) + current_angles_(i);
         }
@@ -112,9 +115,10 @@ void PositionController::update(RobotPlugin *plugin, ros::Time current_time, boo
           torques = -((pd_gains_p_.array() * temp_angles_.array()) +
                       (pd_gains_d_.array() * current_angle_velocities_.array()) +
                       (pd_gains_i_.array() * pd_integral_.array())).matrix();
-          // ROS_INFO_STREAM_THROTTLE(0.5, "pid torques:"<<torques);
-
-
+          // ROS_INFO_STREAM_THROTTLE(1, "pid pos:"<<temp_angles_);
+          // ROS_INFO_STREAM_THROTTLE(1, "pid vel:"<<current_angle_velocities_);
+          // ROS_INFO_STREAM_THROTTLE(1, "pid integral:"<<pd_integral_);
+          // ROS_INFO_STREAM_THROTTLE(1, "pid torques:"<<torques);
     }
     else
     {
@@ -130,10 +134,10 @@ void PositionController::configure_controller(OptionsMap &options)
     // This sets the mode
     ROS_INFO_STREAM("Received controller configuration");
     // needs to report when finished
-    report_waiting = true;
     mode_ = (egmri::PositionControlMode) boost::get<int>(options["mode"]);
     //ROS_DEBUG_STREAM("mode: "<<mode_);
     if (mode_ != egmri::NO_CONTROL){
+        report_waiting = true;
         Eigen::VectorXd data = boost::get<Eigen::VectorXd>(options["data"]);
         ROS_INFO_STREAM("target angles: "<<data);
         Eigen::MatrixXd pd_gains = boost::get<Eigen::MatrixXd>(options["pd_gains"]);

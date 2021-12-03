@@ -30,7 +30,7 @@ with the robot.
 
 // Convenience defines.
 #define ros_publisher_ptr(X) boost::scoped_ptr<realtime_tools::RealtimePublisher<X> >
-#define MAX_TRIAL_LENGTH 2000
+#define MAX_TRIAL_LENGTH 10000
 
 namespace egmri_control
 {
@@ -39,6 +39,7 @@ namespace egmri_control
 // Controllers.
 class PositionController;
 class TrialController;
+class DualTrialController;
 // Sensors.
 class Sensor;
 // Sample.
@@ -64,6 +65,8 @@ protected:
     boost::scoped_ptr<PositionController> left_pos_controller_;
     // // Current trial controller (if any).
     boost::scoped_ptr<TrialController> trial_controller_;
+    // // Current dual trial controller
+    boost::scoped_ptr<DualTrialController> dual_trial_controller_;
     // // Sensor data for the current time step (left).
     boost::scoped_ptr<Sample> current_time_step_sample_left_;
     // // Sensor data for the current time step (right).
@@ -96,9 +99,21 @@ protected:
     // Is a right arm data request pending?
     bool right_data_request_waiting_;
     // Are the sensors initialized?
+    // Is a left arm trial data request pending?
+    bool left_trial_data_waiting_;
+    // Is a right arm trial data request pending?
+    bool right_trial_data_waiting_;
+
+    int controller_step_length_;
+
+    int control_step_count_;
+
     bool sensors_initialized_;
     // Is everything initialized for the trial controller?
     bool controller_initialized_;
+    // only used for trials
+    bool is_left_active_;
+    bool is_right_active_;
     // //tf publisher
     ros_publisher_ptr(egmri_controller_pkg::TfObsData) tf_publisher_;
     // //tf action subscriber
@@ -124,7 +139,7 @@ public:
 
     // Report publishers
     // Publish a sample with data from up to T timesteps
-    virtual void publish_sample_report(boost::scoped_ptr<Sample>& sample, int T=1);
+    virtual void publish_sample_report(boost::scoped_ptr<Sample>& sample, int T=1, egmri::ActuatorType actuator_type=egmri::LEFT_ARM);
     //
     // // Subscriber callbacks.
     // // Position command callback.
@@ -151,6 +166,7 @@ public:
     virtual Sensor *get_sensor(SensorType sensor, egmri::ActuatorType actuator_type);
     // Get current encoder readings (robot-dependent).
     virtual void get_joint_encoder_readings(Eigen::VectorXd &angles, egmri::ActuatorType arm) const = 0;
+    virtual void get_joint_state_readings(Eigen::VectorXd &angles, Eigen::VectorXd &angle_velocities, egmri::ActuatorType arm) const = 0;
     // Get forward kinematics solver.
     // virtual void get_fk_solver(boost::shared_ptr<KDL::ChainFkSolverPos> &fk_solver, boost::shared_ptr<KDL::ChainJntToJacSolver> &jac_solver, egmri::ActuatorType arm);
 

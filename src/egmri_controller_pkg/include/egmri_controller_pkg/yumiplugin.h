@@ -54,8 +54,6 @@ private:
     ros::Time last_update_time_;
     // Counter for keeping track of controller steps.
     int controller_counter_;
-    // Length of controller steps in ms.
-    int controller_step_length_;
     // Controller frequency in Hz.
     int controller_period_ms_;
     // Controller period counter ms.
@@ -95,6 +93,7 @@ public:
     virtual ros::Time get_current_time() const;
     // Get current encoder readings (robot-dependent).
     virtual void get_joint_encoder_readings(Eigen::VectorXd &angles, egmri::ActuatorType arm) const;
+    virtual void get_joint_state_readings(Eigen::VectorXd &angles, Eigen::VectorXd &angle_velocities, egmri::ActuatorType arm) const;
 };
 
 }

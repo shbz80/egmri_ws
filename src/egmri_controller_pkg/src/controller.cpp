@@ -16,6 +16,10 @@ Controller::~Controller()
 {
 }
 
+void Controller::update(RobotPlugin *plugin, ros::Time current_time, boost::scoped_ptr<Sample>& sample, Eigen::VectorXd &torques)
+{
+}
+
 void Controller::configure_controller(OptionsMap &options)
 {
 }
@@ -32,4 +36,3 @@ double Controller::get_update_delay()
 void Controller::reset(ros::Time update_time)
 {
 }
-
