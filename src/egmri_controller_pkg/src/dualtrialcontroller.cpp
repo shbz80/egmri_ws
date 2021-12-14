@@ -28,6 +28,8 @@ void DualTrialController::update(RobotPlugin *plugin,
         ROS_ERROR("Updating when controller is finished. May seg fault.");
     }
     Eigen::VectorXd X_left, X_right, obs_left, obs_right;
+    // state and observations are the same.
+    // get values for X_left, X_right, obs_left, obs_right
     sample_left->get_data(step_counter_, X_left, state_datatypes_);
     sample_right->get_data(step_counter_, X_right, state_datatypes_);
     sample_left->get_data(step_counter_, obs_left, obs_datatypes_);
@@ -40,7 +42,9 @@ void DualTrialController::update(RobotPlugin *plugin,
     // publish_obs(obs, plugin);
     // Ask subclass to fill in torques
     // get_action(step_counter_, X, obs, torques);
+    ROS_INFO_STREAM("Dual Impedance Controller Command begin ");
     update_control_command(step_counter_, current_time, obs_left, obs_right, torques_left, torques_right);
+    ROS_INFO_STREAM("Dual Impedance Controller Command end ");
     // update_control_command(step_counter_, X_left, X_right, torques_left, torques_right)
     // Set the torques for the sample
     sample_left->set_data(step_counter_,egmri::ACTION,torques_left,torques_left.size(),SampleDataFormatDouble);

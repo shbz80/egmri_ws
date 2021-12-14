@@ -250,7 +250,9 @@ void RobotPlugin::update_controllers(ros::Time current_time, bool is_controller_
       else right_pos_controller_->update(this, current_time, current_time_step_sample_right_, right_arm_torques_);
     }
     else if (dual_trial_init) {
+      ROS_INFO_STREAM("Dual Impedance Controller update begin ");
       dual_trial_controller_->update(this, current_time, current_time_step_sample_left_, current_time_step_sample_right_, left_arm_torques_, right_arm_torques_);
+      ROS_INFO_STREAM("Dual Impedance Controller update end ");
       if (!is_left_active_) left_pos_controller_->update(this, current_time, current_time_step_sample_left_, left_arm_torques_);
       if (!is_right_active_) right_pos_controller_->update(this, current_time, current_time_step_sample_right_, right_arm_torques_);
       }
@@ -318,7 +320,7 @@ void RobotPlugin::update_controllers(ros::Time current_time, bool is_controller_
     }
 
     if (is_controller_step){
-      if (!(control_step_count_%20)){
+      if (!(control_step_count_%30)){
           // ROS_INFO_STREAM("control message tick:"<<ros::Time::now());
           if (right_trial_data_waiting_) {
             publish_sample_report(current_time_step_sample_right_, controller_step_length_, egmri::RIGHT_ARM);
@@ -438,6 +440,11 @@ void RobotPlugin::position_subscriber_callback(const egmri_controller_pkg::Posit
 //
 void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCommand::ConstPtr& msg){
 
+  // step 1: prepare a dictionary (controller_params) of command params that came in the message
+  // step 2: instantiate a trial controller object based on the controller type-(IMP_CONTROLLER)
+  //          for example: dual_trial_controller_.reset(new DualImpedanceController());
+  // step 3: configure the new controller using the prepared Dictionary
+  //          for example: dual_trial_controller_-> configure_controller(controller_params);
     OptionsMap controller_params;
     ROS_INFO_STREAM("received trial command");
 
@@ -461,7 +468,7 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
 
     if (arm==egmri::LEFT_ARM || arm==egmri::BOTH){
       initialize_sample(current_time_step_sample_left_, egmri::LEFT_ARM);
-      // Update sensor frequency
+      // Update sensor frequency (don't worry about this)
       for (int sensor = 0; sensor < left_sensors_.size(); sensor++)
       {
           left_sensors_[sensor]->set_update(1.0/frequency);
@@ -489,6 +496,7 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
     controller_params["obs_datatypes"] = obs_datatypes;
     arm_datatype = msg->arm_datatype;
     controller_params["arm_datatype"] = arm_datatype;
+   // ignore TF_CONTROLLER
     if (msg->controller.controller_to_execute == egmri::TF_CONTROLLER) {
         trial_controller_.reset(new TfController());
         controller_params["T"] = (int)msg->T;
@@ -502,6 +510,7 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
     else if (msg->controller.controller_to_execute == egmri::IMP_CONTROLLER) {
       // initialize and configure the impedance controller
       dual_trial_controller_.reset(new DualImpedanceController());
+      ROS_INFO_STREAM("Dual Impedance Controller Constructed ");
       controller_params["T"] = (int)msg->T;
       Eigen::VectorXd data1, data2;
       data1.resize(msg->data1.size());
@@ -535,6 +544,8 @@ void RobotPlugin::trial_subscriber_callback(const egmri_controller_pkg::TrialCom
     configure_sensors();
 
     controller_initialized_ = true;
+
+    ROS_INFO_STREAM("Dual Impedance Controller Initialized ");
 }
 //
 void RobotPlugin::test_callback(const std_msgs::Empty::ConstPtr& msg){

@@ -1,6 +1,7 @@
 #include "egmri_controller_pkg/robotplugin.h"
 #include "egmri_controller_pkg/dualimpedancecontroller.h"
 #include "egmri_controller_pkg/util.h"
+#include "controller.h"
 
 using namespace egmri_control;
 
@@ -36,8 +37,12 @@ DualImpedanceController::DualImpedanceController() : DualTrialController()
     // Initialize target angle and position.
     target_angles_left_.resize(7);
     dest_angles_left_.resize(7);
+    target_angles_left_.setZero();
+    dest_angles_left_.setZero();
     target_angles_right_.resize(7);
     dest_angles_right_.resize(7);
+    target_angles_right_.setZero();
+    dest_angles_right_.setZero();
 
         // Initialize joints temporary storage.
     temp_angles_left_.resize(7);
@@ -45,6 +50,9 @@ DualImpedanceController::DualImpedanceController() : DualTrialController()
 
     last_update_time_ = ros::Time(0.0);
     // temp pid stuff
+
+
+
 
 }
 
@@ -100,96 +108,154 @@ void DualImpedanceController::update_control_command(const int &step_count,
   // control frequecy is setup in yumitplugin.cpp
   // X_left and X_right are readonly state vectors
   // write computed torques to torques_left and torques_right
-  for (int i = 0; i < 7; i++){
-    temp_angles_left_(i) = X_left(i);
-    current_angle_velocities_left_(i) = X_left(7+i);
-    temp_angles_right_(i) = X_right(i);
-    current_angle_velocities_right_(i) = X_right(7+i);
+
+   ROS_INFO_STREAM("PD_PLUS begin");
+
+  // for (int i = 0; i < 7; i++){
+  //   temp_angles_left_(i) = X_left(i);
+  //   current_angle_velocities_left_(i) = X_left(7+i);
+  //   temp_angles_right_(i) = X_right(i);
+  //   current_angle_velocities_right_(i) = X_right(7+i);
+  // }
+  //
+  // // Estimate joint angle velocities.
+  // double update_time = current_time.toSec() - last_update_time_.toSec();
+  //
+  // if (arm_==egmri::LEFT_ARM || arm_==egmri::BOTH){
+  //   if (!last_update_time_.isZero())
+  //   { // Only compute velocities if we have a previous sample.
+  //       // current_angle_velocities_left_ = (temp_angles_left_ - current_angles_left_)/update_time;
+  //   }
+  //   else{
+  //       update_time = 0.001;
+  //   }
+  //     // ROS_INFO_STREAM_THROTTLE(1, "update_time:"<<update_time);
+  //   // Store new angles.
+  //   current_angles_left_ = temp_angles_left_;
+  //
+  //   // computer current angle to dest. This is added to slow down the speed
+  //   temp_angles_left_ = dest_angles_left_ - current_angles_left_;
+  //   for(int i=0;i<7;i++){
+  //     target_angles_left_(i) = std::min(std::abs(temp_angles_left_(i)),ANGLE)*((temp_angles_left_(i) >= 0.0) ? 1.0 : -1.0) + current_angles_left_(i);
+  //   }
+  //
+  //   // Compute error.
+  //   temp_angles_left_ = current_angles_left_ - target_angles_left_;
+  //   // ROS_INFO_STREAM_THROTTLE(0.5, "error angles:"<<temp_angles_);
+  //
+  //   // Add to integral term.
+  //   pd_integral_left_ += temp_angles_left_ * update_time;
+  //
+  //   // Clamp integral term
+  //   for (int i = 0; i < temp_angles_left_.rows(); i++){
+  //       if (pd_integral_left_(i) * pd_gains_i_(i) > i_clamp_(i)) {
+  //           pd_integral_left_(i) = i_clamp_(i) / pd_gains_i_(i);
+  //       }
+  //       else if (pd_integral_left_(i) * pd_gains_i_(i) < -i_clamp_(i)) {
+  //           pd_integral_left_(i) = -i_clamp_(i) / pd_gains_i_(i);
+  //       }
+  //   }
+  //
+  //   // Compute torques.
+  //   torques_left = -((pd_gains_p_.array() * temp_angles_left_.array()) +
+  //               (pd_gains_d_.array() * current_angle_velocities_left_.array()) +
+  //               (pd_gains_i_.array() * pd_integral_left_.array())).matrix();
+  // }
+  //
+  // if (arm_==egmri::RIGHT_ARM || arm_==egmri::BOTH){
+  //   if (!last_update_time_.isZero())
+  //   { // Only compute velocities if we have a previous sample.
+  //       // current_angle_velocities_right_ = (temp_angles_right_ - current_angles_right_)/update_time;
+  //   }
+  //   else{
+  //       update_time = 0.001;
+  //   }
+  //   // Store new angles.
+  //   current_angles_right_ = temp_angles_right_;
+  //
+  //   // computer current angle to dest. This is added to slow down the speed
+  //   temp_angles_right_ = dest_angles_right_ - current_angles_right_;
+  //   for(int i=0;i<7;i++){
+  //     target_angles_right_(i) = std::min(std::abs(temp_angles_right_(i)),ANGLE)*((temp_angles_right_(i) >= 0.0) ? 1.0 : -1.0) + current_angles_right_(i);
+  //   }
+  //
+  //   // Compute error.
+  //   temp_angles_right_ = current_angles_right_ - target_angles_right_;
+  //   // ROS_INFO_STREAM_THROTTLE(0.5, "error angles:"<<temp_angles_);
+  //
+  //   // Add to integral term.
+  //   pd_integral_right_ += temp_angles_right_ * update_time;
+  //
+  //   // Clamp integral term
+  //   for (int i = 0; i < temp_angles_right_.rows(); i++){
+  //       if (pd_integral_right_(i) * pd_gains_i_(i) > i_clamp_(i)) {
+  //           pd_integral_right_(i) = i_clamp_(i) / pd_gains_i_(i);
+  //       }
+  //       else if (pd_integral_right_(i) * pd_gains_i_(i) < -i_clamp_(i)) {
+  //           pd_integral_right_(i) = -i_clamp_(i) / pd_gains_i_(i);
+  //       }
+  //   }
+  //   // Compute torques.
+  //   torques_right = -((pd_gains_p_.array() * temp_angles_right_.array()) +
+  //               (pd_gains_d_.array() * current_angle_velocities_right_.array()) +
+  //               (pd_gains_i_.array() * pd_integral_right_.array())).matrix();
+  //
+  // }
+
+  // pd_plus
+  // desired joint vel
+
+
+  for (int i=0; i<18; i++) {
+    dqd[i] = 0.0;
   }
 
-  // Estimate joint angle velocities.
-  double update_time = current_time.toSec() - last_update_time_.toSec();
-
-  if (arm_==egmri::LEFT_ARM || arm_==egmri::BOTH){
-    if (!last_update_time_.isZero())
-    { // Only compute velocities if we have a previous sample.
-        // current_angle_velocities_left_ = (temp_angles_left_ - current_angles_left_)/update_time;
-    }
-    else{
-        update_time = 0.001;
-    }
-      // ROS_INFO_STREAM_THROTTLE(1, "update_time:"<<update_time);
-    // Store new angles.
-    current_angles_left_ = temp_angles_left_;
-
-    // computer current angle to dest. This is added to slow down the speed
-    temp_angles_left_ = dest_angles_left_ - current_angles_left_;
-    for(int i=0;i<7;i++){
-      target_angles_left_(i) = std::min(std::abs(temp_angles_left_(i)),ANGLE)*((temp_angles_left_(i) >= 0.0) ? 1.0 : -1.0) + current_angles_left_(i);
-    }
-
-    // Compute error.
-    temp_angles_left_ = current_angles_left_ - target_angles_left_;
-    // ROS_INFO_STREAM_THROTTLE(0.5, "error angles:"<<temp_angles_);
-
-    // Add to integral term.
-    pd_integral_left_ += temp_angles_left_ * update_time;
-
-    // Clamp integral term
-    for (int i = 0; i < temp_angles_left_.rows(); i++){
-        if (pd_integral_left_(i) * pd_gains_i_(i) > i_clamp_(i)) {
-            pd_integral_left_(i) = i_clamp_(i) / pd_gains_i_(i);
-        }
-        else if (pd_integral_left_(i) * pd_gains_i_(i) < -i_clamp_(i)) {
-            pd_integral_left_(i) = -i_clamp_(i) / pd_gains_i_(i);
-        }
-    }
-
-    // Compute torques.
-    torques_left = -((pd_gains_p_.array() * temp_angles_left_.array()) +
-                (pd_gains_d_.array() * current_angle_velocities_left_.array()) +
-                (pd_gains_i_.array() * pd_integral_left_.array())).matrix();
+  ROS_INFO_STREAM("CP1");
+  for (int i=0; i<7; i++) {
+    if (arm_==egmri::BOTH || arm_==egmri::RIGHT_ARM) qd[i] = dest_angles_right_[i];
+    if (arm_==egmri::BOTH || arm_==egmri::LEFT_ARM) qd[i+9] = dest_angles_left_[i];
+    // qd[i] = 0;
+    // qd[i+9] = 0;
   }
 
-  if (arm_==egmri::RIGHT_ARM || arm_==egmri::BOTH){
-    if (!last_update_time_.isZero())
-    { // Only compute velocities if we have a previous sample.
-        // current_angle_velocities_right_ = (temp_angles_right_ - current_angles_right_)/update_time;
-    }
-    else{
-        update_time = 0.001;
-    }
-    // Store new angles.
-    current_angles_right_ = temp_angles_right_;
+  ROS_INFO_STREAM("CP2");
+  qd[7] = 0.0;
+  qd[8] = 0.0;
+  qd[16] = 0.0;
+  qd[17] = 0.0;
 
-    // computer current angle to dest. This is added to slow down the speed
-    temp_angles_right_ = dest_angles_right_ - current_angles_right_;
-    for(int i=0;i<7;i++){
-      target_angles_right_(i) = std::min(std::abs(temp_angles_right_(i)),ANGLE)*((temp_angles_right_(i) >= 0.0) ? 1.0 : -1.0) + current_angles_right_(i);
-    }
+ROS_INFO_STREAM("CP3");
+  for (int i=0; i<7; i++) {
+    q[i] = X_right[i];
+    q[i+9] = X_left[i];
+    dq[i] = X_right[i+7];
+    dq[i+9] = X_left[i+7];
+  }
 
-    // Compute error.
-    temp_angles_right_ = current_angles_right_ - target_angles_right_;
-    // ROS_INFO_STREAM_THROTTLE(0.5, "error angles:"<<temp_angles_);
+ROS_INFO_STREAM("CP4");
+  q[7] = 0.0;
+  q[8] = 0.0;
+  q[16] = 0.0;
+  q[17] = 0.0;
+  dq[7] = 0.0;
+  dq[8] = 0.0;
+  dq[16] = 0.0;
+  dq[17] = 0.0;
 
-    // Add to integral term.
-    pd_integral_right_ += temp_angles_right_ * update_time;
+  ROS_INFO_STREAM("PD_PLUS Init");
 
-    // Clamp integral term
-    for (int i = 0; i < temp_angles_right_.rows(); i++){
-        if (pd_integral_right_(i) * pd_gains_i_(i) > i_clamp_(i)) {
-            pd_integral_right_(i) = i_clamp_(i) / pd_gains_i_(i);
-        }
-        else if (pd_integral_right_(i) * pd_gains_i_(i) < -i_clamp_(i)) {
-            pd_integral_right_(i) = -i_clamp_(i) / pd_gains_i_(i);
-        }
-    }
-    // Compute torques.
-    torques_right = -((pd_gains_p_.array() * temp_angles_right_.array()) +
-                (pd_gains_d_.array() * current_angle_velocities_right_.array()) +
-                (pd_gains_i_.array() * pd_integral_right_.array())).matrix();
+  controller(parent, dv1, dv2, dv3, dv4, q, dq, qd, dqd, tau);
+
+  ROS_INFO_STREAM("controller called");
+
+  for (int i=0; i<7; i++) {
+    torques_right[i] = tau[i];
+    torques_left[i] = tau[i+9];
 
   }
+
+  ROS_INFO_STREAM("torques ready");
+
   // Update last update time.
   last_update_time_ = current_time;
 }

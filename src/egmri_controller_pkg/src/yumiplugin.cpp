@@ -13,6 +13,7 @@ EGMRIYumiPlugin::EGMRIYumiPlugin()
     // Some basic variable initialization.
     controller_counter_ = 0;
     // control frequency is decided here, set period in micoseconds
+    // cannot be lesser than 4
     controller_period_ms_ = 10;
     // a counter, should be initialized to zero
     current_controller_period_ms_ = 0;
@@ -320,7 +321,7 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
         // if (left_arm_torques_[i]==0) left_arm_fric_trq_[i] = 0;
         left_arm_fric_trq_[i] = (controller_counter_%2)?(left_arm_stat_fric_[i]*left_arm_stat_fric_percent[i]):(left_arm_stat_fric_[i]*-left_arm_stat_fric_percent[i]);
         left_arm_joint_states_[i].setCommand(left_arm_torques_[i]);
-        // left_arm_joint_states_[i].setCommand(left_arm_torques_[i] + left_arm_fric_trq_[i]);
+        //left_arm_joint_states_[i].setCommand(left_arm_torques_[i] + left_arm_fric_trq_[i]);
         // left_arm_joint_states_[i].setCommand(0);
       }
     // ROS_INFO_STREAM_THROTTLE(1,"left arm joint pos: "<<left_arm_pos_);
@@ -332,7 +333,7 @@ void EGMRIYumiPlugin::update(const ros::Time& time, const ros::Duration& period)
         right_arm_pos_[i] =  right_arm_joint_states_[i].getPosition();
         right_arm_fric_trq_[i] = (controller_counter_%2)?(right_arm_stat_fric_[i]*right_arm_stat_fric_percent[i]):(right_arm_stat_fric_[i]*-right_arm_stat_fric_percent[i]);
         right_arm_joint_states_[i].setCommand(right_arm_torques_[i]);
-        // right_arm_joint_states_[i].setCommand(right_arm_torques_[i] + right_arm_fric_trq_[i]);
+        //right_arm_joint_states_[i].setCommand(right_arm_torques_[i] + right_arm_fric_trq_[i]);
         // right_arm_joint_states_[i].setCommand(0);
       }
     // ROS_INFO_STREAM_THROTTLE(1,"right arm joint pos: "<<right_arm_pos_);

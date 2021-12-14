@@ -44,10 +44,16 @@ void controller(const double parent[19], const double g0[4][76], const double
     dq_[i] = dq[i] - dqd[i];
   }
 
+  double p_gains[18] = {45, 45, 24, 24, 3, 3, 3, 0, 0, 45, 45, 24, 24, 3, 3, 3, 0, 0};
+  double d_gains[18] = {4.5, 4.5, 3, 3, 0.6, 0.6, 0.45, 0, 0, 4.5, 4.5, 3, 3, 0.6, 0.6, 0.45, 0, 0};
+  //p_gains = p_gains/3.0 ;
+  //d_gains = d_gains/3.0 ;
+
   ForwardKinematics(false, parent, g0, csi, q, Htm, J);
   DynamicMatrices(com, Mass, Htm, J, xg, L, M, tau);
   for (i = 0; i < 18; i++) {
-    tau[i] = (tau[i] + 20.0 * dq_[i]) + 400.0 * q_[i];
+    tau[i] = (-d_gains[i]/7.5 * dq_[i]) - p_gains[i]/7.5 * q_[i];
+    // tau[i] = (tau[i] + 20.0 * dq_[i]) + 400.0 * q_[i];
   }
 }
 

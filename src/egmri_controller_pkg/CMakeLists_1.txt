@@ -73,7 +73,6 @@ else()
 endif()
 
 include_directories(include)
-include_directories(src/pd_plus)
 set(DDP_FILES src/robotplugin.cpp
               src/yumiplugin.cpp
               src/sample.cpp
@@ -87,38 +86,6 @@ set(DDP_FILES src/robotplugin.cpp
               src/encodersensor.cpp
               src/encoderfilter.cpp
               src/util.cpp
-              src/pd_plus/abs1.cpp
-              src/pd_plus/DerSum.cpp
-              src/pd_plus/ListGet.cpp
-              src/pd_plus/abs.cpp
-              src/pd_plus/DynamicMatrices.cpp
-              src/pd_plus/ListSet.cpp
-              src/pd_plus/all.cpp
-              src/pd_plus/executePlan.cpp
-              src/pd_plus/allOrAny.cpp
-              src/pd_plus/executePlan_data.cpp
-              src/pd_plus/mtimes1.cpp
-              src/pd_plus/any1.cpp
-              src/pd_plus/executePlan_initialize.cpp
-              src/pd_plus/mtimes.cpp
-              src/pd_plus/applyVectorFunction.cpp
-              src/pd_plus/executePlan_terminate.cpp
-              src/pd_plus/Quaternion.cpp
-              src/pd_plus/controller.cpp
-              src/pd_plus/Exponential.cpp
-              src/pd_plus/sin1.cpp
-              src/pd_plus/cos1.cpp
-              src/pd_plus/eye.cpp
-              src/pd_plus/sin.cpp
-              src/pd_plus/cos.cpp
-              src/pd_plus/ForwardKinematics.cpp
-              src/pd_plus/Skew.cpp
-              src/pd_plus/deal.cpp
-              src/pd_plus/InvAdjoint.cpp
-              src/pd_plus/sqrt1.cpp
-              src/pd_plus/DerProd.cpp
-              src/pd_plus/Joint.cpp
-              src/pd_plus/sqrt.cpp
               )
 
 
